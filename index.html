@@ -2,23 +2,36 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Chiến thuật bóng đá - Kéo thả cầu thủ</title>
 <style>
     * {
         box-sizing: border-box;
         user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        overflow-x: hidden;
+        overscroll-behavior: none;
+        touch-action: manipulation;
     }
 
     body {
-        margin: 0;
         min-height: 100vh;
+        min-height: 100dvh;
         background: linear-gradient(145deg, #1a3a1a 0%, #2d5e2d 100%);
         font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
         display: flex;
         justify-content: center;
         align-items: flex-start;
-        padding: 16px;
+        padding: 8px;
     }
 
     .app {
@@ -81,9 +94,9 @@
         overflow: hidden;
         cursor: default;
         transition: box-shadow 0.2s;
+        touch-action: none;
     }
 
-    /* Đường kẻ DỌC giữa sân (chia đôi sân theo chiều dọc) */
     .pitch::before {
         content: "";
         position: absolute;
@@ -97,7 +110,6 @@
         pointer-events: none;
     }
 
-    /* Vòng tròn giữa sân */
     .pitch::after {
         content: "";
         position: absolute;
@@ -113,7 +125,6 @@
         pointer-events: none;
     }
 
-    /* Vòng cấm hai bên (khung thành ở hai đầu trái/phải) */
     .pitch .penalty-left,
     .pitch .penalty-right {
         position: absolute;
@@ -136,7 +147,6 @@
         border-radius: 60px 0 0 60px;
     }
 
-    /* Khung thành nhỏ ở hai đầu */
     .pitch .goal-left,
     .pitch .goal-right {
         position: absolute;
@@ -160,7 +170,6 @@
         border-right: none;
     }
 
-    /* Chấm giao bóng giữa sân */
     .pitch .center-dot {
         position: absolute;
         top: 50%;
@@ -380,9 +389,122 @@
         transition: transform 0.3s ease;
         z-index: 9999;
         pointer-events: none;
+        white-space: nowrap;
     }
     .toast.show {
         transform: translateX(-50%) translateY(0);
+    }
+
+    /* ===================================================== */
+    /* SCALE TỰ ĐỘNG CHO ĐIỆN THOẠI — GIỮ NGUYÊN GIAO DIỆN    */
+    /* ===================================================== */
+
+    /* Tablet: thu nhỏ nhẹ */
+    @media (max-width: 1100px) {
+        .app {
+            transform: scale(0.92);
+            transform-origin: top center;
+            width: 108.7%;
+            margin-left: -4.35%;
+        }
+    }
+
+    /* Điện thoại nằm ngang */
+    @media (max-width: 900px) and (orientation: landscape) {
+        body {
+            padding: 4px;
+            align-items: center;
+        }
+        .app {
+            transform: scale(0.72);
+            transform-origin: center center;
+            width: 138.8%;
+            margin-left: -19.4%;
+            padding: 14px;
+            gap: 14px;
+        }
+        .pitch-wrapper { min-width: 380px; }
+        .members-area { min-width: 200px; max-width: 240px; padding: 12px 8px; }
+        .members-list { max-height: 260px; min-height: 120px; gap: 8px; padding: 10px 6px; }
+        .player { width: 60px; height: 60px; }
+        .player .number { font-size: 1.1rem; }
+        .player .name { font-size: 0.45rem; max-width: 52px; }
+        .pitch .player { width: 54px; height: 54px; }
+        .pitch .player .number { font-size: 1rem; }
+        .pitch .player .name { font-size: 0.42rem; max-width: 46px; }
+        .members-title { font-size: 0.95rem; margin-bottom: 8px; }
+        .pitch-label { font-size: 0.85rem; }
+        .pitch-label span:last-child { font-size: 0.7rem; padding: 3px 8px; }
+        .hint { font-size: 0.6rem; }
+        .btn { padding: 8px 10px; font-size: 0.8rem; }
+        .toast { font-size: 0.85rem; padding: 10px 18px; }
+    }
+
+    /* Điện thoại dọc (mặc định — phổ biến nhất) */
+    @media (max-width: 700px) and (orientation: portrait) {
+        body {
+            padding: 4px;
+            align-items: flex-start;
+            padding-top: 6px;
+        }
+        .app {
+            transform: scale(0.62);
+            transform-origin: top center;
+            width: 161.3%;
+            margin-left: -30.65%;
+            padding: 14px;
+            gap: 14px;
+            border-radius: 32px;
+        }
+        .pitch-wrapper { min-width: 480px; flex: 1 1 100%; }
+        .members-area {
+            min-width: 260px;
+            max-width: 300px;
+            flex: 1 1 100%;
+            padding: 14px 10px;
+            border-radius: 28px;
+        }
+        .members-list { max-height: 220px; min-height: 100px; gap: 10px; padding: 12px 8px; }
+        .player { width: 68px; height: 68px; }
+        .player .number { font-size: 1.2rem; }
+        .player .name { font-size: 0.5rem; max-width: 58px; }
+        .pitch .player { width: 60px; height: 60px; }
+        .pitch .player .number { font-size: 1.05rem; }
+        .pitch .player .name { font-size: 0.45rem; max-width: 50px; }
+        .members-title { font-size: 1rem; margin-bottom: 10px; }
+        .pitch-label { font-size: 0.9rem; }
+        .pitch-label span:last-child { font-size: 0.72rem; padding: 3px 10px; }
+        .hint { font-size: 0.62rem; }
+        .btn { padding: 9px 10px; font-size: 0.82rem; }
+        .toast { font-size: 0.85rem; padding: 10px 18px; }
+    }
+
+    /* Điện thoại nhỏ (iPhone SE, etc.) */
+    @media (max-width: 400px) and (orientation: portrait) {
+        .app {
+            transform: scale(0.55);
+            transform-origin: top center;
+            width: 181.8%;
+            margin-left: -40.9%;
+        }
+        .pitch-wrapper { min-width: 460px; }
+        .members-area { min-width: 250px; max-width: 290px; }
+        .members-list { max-height: 200px; }
+    }
+
+    /* Điện thoại siêu nhỏ */
+    @media (max-width: 340px) and (orientation: portrait) {
+        .app {
+            transform: scale(0.48);
+            transform-origin: top center;
+            width: 208.3%;
+            margin-left: -54.15%;
+        }
+    }
+
+    /* Màn hình rất lớn: giữ nguyên, không cần scale */
+    @media (min-width: 1401px) {
+        .app { transform: none; }
     }
 </style>
 </head>
