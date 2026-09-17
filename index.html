@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chiến thuật bóng đá - Kéo thả cầu thủ</title>
+<style>
+    * {
+        box-sizing: border-box;
+        user-select: none;
+    }
+
+    body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(145deg, #1a3a1a 0%, #2d5e2d 100%);
+        font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 16px;
+    }
+
+    .app {
+        display: flex;
+        gap: 20px;
+        max-width: 1400px;
+        width: 100%;
+        background: rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(4px);
+        padding: 20px;
+        border-radius: 48px;
+        box-shadow: 0 25px 35px rgba(0, 0, 0, 0.6);
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    /* ----- SÂN BÓNG ----- */
+    .pitch-wrapper {
+        flex: 2 1 620px;
+        min-width: 500px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .pitch-label {
+        color: #f5e9d8;
+        font-weight: 600;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+        text-shadow: 2px 2px 0 #1a2a1a;
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        padding: 0 10px;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .pitch-label span:last-child {
+        font-size: 0.85rem;
+        font-weight: 400;
+        opacity: 0.9;
+        background: #2e4a2e;
+        padding: 4px 12px;
+        border-radius: 30px;
+    }
+
+    .pitch {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #1e7a1e;
+        background-image:
+            repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0px, rgba(255, 255, 255, 0.05) 40px, transparent 40px, transparent 80px),
+            radial-gradient(circle at 30% 40%, #3b9e3b 0%, #1b6b1b 80%);
+        border-radius: 24px;
+        box-shadow: inset 0 0 40px #0a2a0a, 0 18px 25px rgba(0, 0, 0, 0.6);
+        border: 4px solid #ffffffd9;
+        overflow: hidden;
+        cursor: default;
+        transition: box-shadow 0.2s;
+    }
+
+    /* Đường kẻ DỌC giữa sân (chia đôi sân theo chiều dọc) */
+    .pitch::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 3px;
+        background: rgba(255, 255, 255, 0.75);
+        transform: translateX(-50%);
+        box-shadow: 0 0 6px #fff9;
+        pointer-events: none;
+    }
+
+    /* Vòng tròn giữa sân */
+    .pitch::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 130px;
+        height: 130px;
+        border: 3px solid rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        background: transparent;
+        box-shadow: 0 0 10px #ffffff80;
+        pointer-events: none;
+    }
+
+    /* Vòng cấm hai bên (khung thành ở hai đầu trái/phải) */
+    .pitch .penalty-left,
+    .pitch .penalty-right {
+        position: absolute;
+        top: 50%;
+        width: 90px;
+        height: 60%;
+        border: 3px solid rgba(255, 255, 255, 0.8);
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.02);
+        pointer-events: none;
+    }
+    .penalty-left {
+        left: 0;
+        border-left: none;
+        border-radius: 0 60px 60px 0;
+    }
+    .penalty-right {
+        right: 0;
+        border-right: none;
+        border-radius: 60px 0 0 60px;
+    }
+
+    /* Khung thành nhỏ ở hai đầu */
+    .pitch .goal-left,
+    .pitch .goal-right {
+        position: absolute;
+        top: 50%;
+        width: 12px;
+        height: 20%;
+        background: rgba(255, 255, 255, 0.85);
+        transform: translateY(-50%);
+        border: 2px solid #fff;
+        pointer-events: none;
+        box-shadow: 0 0 8px #fff;
+    }
+    .goal-left {
+        left: 0;
+        border-radius: 0 6px 6px 0;
+        border-left: none;
+    }
+    .goal-right {
+        right: 0;
+        border-radius: 6px 0 0 6px;
+        border-right: none;
+    }
+
+    /* Chấm giao bóng giữa sân */
+    .pitch .center-dot {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 12px;
+        height: 12px;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 12px white;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    /* ----- KHU VỰC DANH SÁCH CẦU THỦ ----- */
+    .members-area {
+        flex: 1 1 280px;
+        max-width: 320px;
+        min-width: 240px;
+        background: #2e4a2e;
+        border-radius: 40px;
+        padding: 18px 12px;
+        box-shadow: inset 0 0 20px #0f1f0f, 0 12px 18px #00000060;
+        border: 2px solid #aacfaa;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .members-title {
+        color: #f9f1e0;
+        text-align: center;
+        font-weight: 700;
+        font-size: 1.15rem;
+        margin-bottom: 14px;
+        padding-bottom: 8px;
+        border-bottom: 3px dashed #6b9e6b;
+        letter-spacing: 1px;
+        text-shadow: 1px 1px 0 #0a1f0a;
+    }
+
+    .members-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+        align-content: flex-start;
+        overflow-y: auto;
+        min-height: 180px;
+        max-height: 380px;
+        background: #1e3a1e80;
+        border-radius: 28px;
+        padding: 16px 10px;
+        border: 1px solid #7fa07f;
+    }
+
+    .members-list:empty::after {
+        content: "Hết cầu thủ — Bấm Làm mới";
+        color: #b0d0b0;
+        font-style: italic;
+        font-size: 0.85rem;
+        width: 100%;
+        text-align: center;
+        padding-top: 20px;
+    }
+
+    /* ----- CẦU THỦ (áo đấu hình tròn) ----- */
+    .player {
+        width: 76px;
+        height: 76px;
+        background: #f5f5f5;
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        color: #1a3a1a;
+        box-shadow: 0 6px 0 #4a2e1e, 0 8px 12px rgba(0, 0, 0, 0.5);
+        border: 3px solid #f5e9d8;
+        cursor: grab;
+        transition: transform 0.1s, box-shadow 0.1s;
+        position: relative;
+        background-image: radial-gradient(circle at 30% 30%, #fff, #d0d0d0);
+        flex-shrink: 0;
+        line-height: 1;
+        text-align: center;
+        padding: 4px;
+    }
+
+    .player .number {
+        font-size: 1.35rem;
+        font-weight: 900;
+        text-shadow: 0 1px 0 white;
+    }
+
+    .player .name {
+        font-size: 0.55rem;
+        font-weight: 700;
+        max-width: 66px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-top: 2px;
+        color: #2a2a2a;
+        text-transform: uppercase;
+        letter-spacing: 0.2px;
+    }
+
+    .player.dragging {
+        opacity: 0.7;
+        cursor: grabbing;
+        box-shadow: 0 0 0 4px #ffe484, 0 10px 20px black;
+        transform: scale(1.05);
+        z-index: 1000;
+    }
+
+    .pitch .player {
+        position: absolute;
+        width: 68px;
+        height: 68px;
+        margin: 0;
+        left: 0;
+        top: 0;
+        transform: translate(-50%, -50%);
+        transition: none;
+        z-index: 5;
+    }
+
+    .pitch .player .number {
+        font-size: 1.2rem;
+    }
+
+    .pitch .player .name {
+        font-size: 0.5rem;
+        max-width: 58px;
+    }
+
+    .pitch .player.dragging {
+        z-index: 2000;
+        cursor: grabbing;
+    }
+
+    /* Nút hành động */
+    .btn-row {
+        margin-top: 14px;
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn {
+        flex: 1;
+        border: none;
+        padding: 11px 12px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        border-radius: 40px;
+        cursor: pointer;
+        letter-spacing: 0.4px;
+        transition: all 0.08s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        color: #1e2b1e;
+    }
+
+    .btn-reset {
+        background: #c49a6c;
+        box-shadow: 0 5px 0 #6b4f2e, 0 4px 10px black;
+    }
+    .btn-reset:hover { background: #dbb48c; }
+    .btn-reset:active {
+        transform: translateY(4px);
+        box-shadow: 0 1px 0 #6b4f2e, 0 2px 6px black;
+    }
+
+    .btn-download {
+        background: #7ec97e;
+        box-shadow: 0 5px 0 #3d6b3d, 0 4px 10px black;
+    }
+    .btn-download:hover { background: #9bdf9b; }
+    .btn-download:active {
+        transform: translateY(4px);
+        box-shadow: 0 1px 0 #3d6b3d, 0 2px 6px black;
+    }
+
+    .hint {
+        color: #e0e0c0;
+        font-size: 0.7rem;
+        text-align: center;
+        margin-top: 10px;
+        opacity: 0.9;
+        line-height: 1.4;
+    }
+
+    .members-list::-webkit-scrollbar {
+        width: 6px;
+    }
+    .members-list::-webkit-scrollbar-thumb {
+        background: #7fa07f;
+        border-radius: 10px;
+    }
+
+    /* Toast thông báo */
+    .toast {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background: #1a3a1a;
+        color: #fff;
+        padding: 12px 24px;
+        border-radius: 30px;
+        font-weight: 600;
+        box-shadow: 0 10px 25px black;
+        border: 2px solid #7ec97e;
+        transition: transform 0.3s ease;
+        z-index: 9999;
+        pointer-events: none;
+    }
+    .toast.show {
+        transform: translateX(-50%) translateY(0);
+    }
+</style>
+</head>
+<body>
+<div class="app">
+    <!-- SÂN BÓNG -->
+    <div class="pitch-wrapper">
+        <div class="pitch-label">
+            <span>⚽ SÂN CHIẾN THUẬT</span>
+            <span>Kéo thả để sắp xếp</span>
+        </div>
+        <div class="pitch" id="pitch">
+            <div class="penalty-left"></div>
+            <div class="penalty-right"></div>
+            <div class="goal-left"></div>
+            <div class="goal-right"></div>
+            <div class="center-dot"></div>
+        </div>
+    </div>
+
+    <!-- DANH SÁCH THÀNH VIÊN -->
+    <div class="members-area">
+        <div class="members-title">👥 Dự Bị</div>
+        <div class="members-list" id="membersList"></div>
+        <div class="btn-row">
+            <button class="btn btn-reset" id="resetBtn">🔄 Làm mới</button>
+            <button class="btn btn-download" id="downloadBtn">⬇️ Tải về</button>
+        </div>
+        <div class="hint">
+            Kéo cầu thủ vào sân · Kéo ra ngoài sân để xóa<br>
+            (Kéo vào danh sách bên phải để trả về)
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Thư viện html2canvas để chụp sân thành ảnh -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+(function() {
+    /* =========================================================
+       CHỈNH SỬA DANH SÁCH THÀNH VIÊN TẠI ĐÂY
+       Mỗi thành viên gồm:
+         - id:     mã định danh duy nhất (chuỗi, không trùng)
+         - number: số áo (chuỗi hoặc số)
+         - name:   tên cầu thủ (hiển thị trên áo)
+       ========================================================= */
+    const PLAYER_ROSTER = [
+        { id: 'p1',  number: '5',  name: 'Nam Khánh' },
+        { id: 'p2',  number: '6',  name: 'Văn Tiến' },
+        { id: 'p3',  number: '7',  name: 'Quang Huy' },
+        { id: 'p4',  number: '8',  name: 'Minh Nhật' },
+        { id: 'p5',  number: '10',  name: 'Hoài Anh' },
+        { id: 'p6',  number: '12',  name: 'Đức Khiêm' },
+        { id: 'p7',  number: '16',  name: 'Tuấn Hùng' },
+        { id: 'p8',  number: '17',  name: 'An Vũ' },
+        { id: 'p9',  number: '18',  name: 'Bảo Khang' },
+        { id: 'p10', number: '21', name: 'Trong Nghĩa' },
+        { id: 'p11', number: '25', name: 'Hải Anh' },
+	{ id: 'p12', number: '28', name: 'Q.Thắng' },
+	{ id: 'p13', number: '30', name: 'Tuấn Quang' },
+    ];
+
+    // Lấy elements
+    const pitch = document.getElementById('pitch');
+    const membersList = document.getElementById('membersList');
+    const resetBtn = document.getElementById('resetBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const toast = document.getElementById('toast');
+
+    // Lưu trữ cầu thủ hiện có: id -> element
+    const playerElements = new Map();
+
+    // ----- HÀM TIỆN ÍCH -----
+    function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    // Tạo element cầu thủ (áo đấu tròn có số + tên)
+    function createPlayerElement(player) {
+        const div = document.createElement('div');
+        div.className = 'player';
+        div.setAttribute('draggable', 'true');
+        div.dataset.playerId = player.id;
+
+        const numberSpan = document.createElement('span');
+        numberSpan.className = 'number';
+        numberSpan.textContent = player.number;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'name';
+        nameSpan.textContent = player.name;
+        nameSpan.title = player.name;
+
+        div.appendChild(numberSpan);
+        div.appendChild(nameSpan);
+
+        div.addEventListener('dragstart', handleDragStart);
+        div.addEventListener('dragend', handleDragEnd);
+        div.addEventListener('dragover', (e) => e.preventDefault());
+
+        return div;
+    }
+
+    // ----- KHỞI TẠO ĐỘI HÌNH BAN ĐẦU -----
+    function initDefaultPlayers() {
+        // Xóa toàn bộ cầu thủ cũ
+        pitch.querySelectorAll('.player').forEach(el => el.remove());
+        membersList.innerHTML = '';
+        playerElements.clear();
+
+        // Tạo cầu thủ từ roster
+        PLAYER_ROSTER.forEach(player => {
+            const el = createPlayerElement(player);
+            membersList.appendChild(el);
+            playerElements.set(player.id, el);
+        });
+    }
+
+    // ----- BIẾN DRAG -----
+    let draggedPlayer = null;
+    let offsetX = 0, offsetY = 0;
+
+    function handleDragStart(e) {
+        const player = e.target.closest('.player');
+        if (!player) return;
+
+        draggedPlayer = player;
+
+        // Tính offset chuột so với tâm cầu thủ
+        const rect = player.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        offsetX = e.clientX - centerX;
+        offsetY = e.clientY - centerY;
+
+        player.classList.add('dragging');
+
+        e.dataTransfer.setData('text/plain', player.dataset.playerId);
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragEnd(e) {
+        const player = e.target.closest('.player');
+        if (!player) return;
+        player.classList.remove('dragging');
+        draggedPlayer = null;
+    }
+
+    // ----- DROP VÀO SÂN -----
+    pitch.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    });
+
+    pitch.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (!draggedPlayer) return;
+
+        const pitchRect = pitch.getBoundingClientRect();
+        const dropX = e.clientX - pitchRect.left;
+        const dropY = e.clientY - pitchRect.top;
+
+        // Vị trí tâm cầu thủ mong muốn
+        const centerX = dropX - offsetX;
+        const centerY = dropY - offsetY;
+
+        // Chuyển sang phần trăm (vì dùng left/top %)
+        let leftPercent = (centerX / pitchRect.width) * 100;
+        let topPercent = (centerY / pitchRect.height) * 100;
+
+        // Giới hạn trong sân
+        leftPercent = Math.min(97, Math.max(3, leftPercent));
+        topPercent = Math.min(95, Math.max(5, topPercent));
+
+        // Nếu cầu thủ đang ở list -> chuyển sang sân
+        if (draggedPlayer.parentElement === membersList) {
+            draggedPlayer.remove();
+            pitch.appendChild(draggedPlayer);
+        } else if (draggedPlayer.parentElement !== pitch) {
+            pitch.appendChild(draggedPlayer);
+        }
+
+        draggedPlayer.style.left = leftPercent + '%';
+        draggedPlayer.style.top = topPercent + '%';
+        draggedPlayer.classList.remove('dragging');
+    });
+
+    // ----- DROP VÀO DANH SÁCH (trả cầu thủ về) -----
+    membersList.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    });
+
+    membersList.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (!draggedPlayer) return;
+
+        if (draggedPlayer.parentElement === pitch) {
+            membersList.appendChild(draggedPlayer);
+            draggedPlayer.style.left = '';
+            draggedPlayer.style.top = '';
+        }
+        draggedPlayer.classList.remove('dragging');
+    });
+
+    // ----- DROP RA NGOÀI (xóa cầu thủ) -----
+    document.addEventListener('dragover', (e) => e.preventDefault());
+    document.addEventListener('drop', (e) => {
+        if (!draggedPlayer) return;
+
+        const target = e.target;
+        const isInsidePitch = pitch.contains(target);
+        const isInsideList = membersList.contains(target);
+
+        // Nếu cầu thủ đang trong sân và bị thả ra ngoài cả sân lẫn danh sách -> xóa
+        if (!isInsidePitch && !isInsideList && draggedPlayer.parentElement === pitch) {
+            draggedPlayer.remove();
+            playerElements.delete(draggedPlayer.dataset.playerId);
+            draggedPlayer = null;
+        }
+    });
+
+    // Hiệu ứng viền sân khi kéo vào
+    pitch.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        pitch.style.boxShadow = 'inset 0 0 40px #b3ffb3, 0 18px 25px rgba(0, 0, 0, 0.6)';
+    });
+    pitch.addEventListener('dragleave', (e) => {
+        if (!pitch.contains(e.relatedTarget)) {
+            pitch.style.boxShadow = 'inset 0 0 40px #0a2a0a, 0 18px 25px rgba(0, 0, 0, 0.6)';
+        }
+    });
+    pitch.addEventListener('drop', () => {
+        pitch.style.boxShadow = 'inset 0 0 40px #0a2a0a, 0 18px 25px rgba(0, 0, 0, 0.6)';
+    });
+
+    // ----- RESET -----
+    resetBtn.addEventListener('click', () => {
+        initDefaultPlayers();
+        showToast('Đã làm mới đội hình!');
+    });
+
+    // ----- TẢI MÀN HÌNH ĐỘI HÌNH VỀ (PNG) -----
+    downloadBtn.addEventListener('click', async () => {
+        try {
+            showToast('Đang tạo ảnh...');
+
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = `
+                display: flex;
+                gap: 20px;
+                padding: 30px;
+                background: linear-gradient(145deg, #1a3a1a 0%, #2d5e2d 100%);
+                border-radius: 32px;
+                font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+                align-items: flex-start;
+            `;
+
+            // Clone sân (bao gồm cầu thủ đang đứng trên sân)
+            const pitchClone = pitch.cloneNode(true);
+            pitchClone.style.width = '780px';
+            pitchClone.style.height = '440px';
+            pitchClone.style.aspectRatio = 'auto';
+            pitchClone.style.flexShrink = '0';
+
+            // Clone khung danh sách
+            const listWrapper = document.createElement('div');
+            listWrapper.style.cssText = `
+                width: 260px;
+                background: #2e4a2e;
+                border-radius: 32px;
+                padding: 16px;
+                border: 2px solid #aacfaa;
+                box-shadow: inset 0 0 20px #0f1f0f;
+                flex-shrink: 0;
+            `;
+
+            const listTitle = document.createElement('div');
+            listTitle.textContent = '👥 ĐỘI HÌNH';
+            listTitle.style.cssText = `
+                color: #f9f1e0;
+                text-align: center;
+                font-weight: 700;
+                font-size: 1.1rem;
+                margin-bottom: 12px;
+                padding-bottom: 8px;
+                border-bottom: 3px dashed #6b9e6b;
+                text-shadow: 1px 1px 0 #0a1f0a;
+            `;
+
+            const listClone = membersList.cloneNode(true);
+            listClone.style.cssText = `
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                justify-content: center;
+                align-content: flex-start;
+                background: #1e3a1e80;
+                border-radius: 24px;
+                padding: 14px 10px;
+                border: 1px solid #7fa07f;
+                min-height: 100px;
+                max-height: none;
+                overflow: visible;
+            `;
+
+            listClone.querySelectorAll('.player').forEach(p => {
+                p.style.width = '62px';
+                p.style.height = '62px';
+                const num = p.querySelector('.number');
+                const nm = p.querySelector('.name');
+                if (num) num.style.fontSize = '1.15rem';
+                if (nm) { nm.style.fontSize = '0.5rem'; nm.style.maxWidth = '56px'; }
+            });
+
+            listWrapper.appendChild(listTitle);
+            listWrapper.appendChild(listClone);
+
+            wrapper.appendChild(pitchClone);
+            wrapper.appendChild(listWrapper);
+
+            wrapper.style.position = 'fixed';
+            wrapper.style.left = '-10000px';
+            wrapper.style.top = '0';
+            document.body.appendChild(wrapper);
+
+            await new Promise(r => setTimeout(r, 100));
+
+            const canvas = await html2canvas(wrapper, {
+                backgroundColor: null,
+                scale: 2,
+                useCORS: true,
+                logging: false,
+            });
+
+            document.body.removeChild(wrapper);
+
+            const link = document.createElement('a');
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+            link.download = `doihinh-${timestamp}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+
+            showToast('Đã tải ảnh đội hình!');
+        } catch (err) {
+            console.error(err);
+            showToast('Lỗi khi tạo ảnh!');
+        }
+    });
+
+    // Khởi tạo lần đầu
+    initDefaultPlayers();
+})();
+</script>
+</body>
+</html>
